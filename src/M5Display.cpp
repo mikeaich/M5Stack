@@ -388,7 +388,7 @@ static bool jpgDecode(jpg_file_decoder_t *jpeg,
 void M5Display::drawJpg(const uint8_t *jpg_data, size_t jpg_len, uint16_t x,
                         uint16_t y, uint16_t maxWidth, uint16_t maxHeight,
                         uint16_t offX, uint16_t offY, jpeg_div_t scale,
-                        POSITION_CALLBACK pos_fn)
+                        POSITION_CALLBACK pos_fn /* = nullptr */)
 {
   if ((x + maxWidth) > width() || (y + maxHeight) > height()) {
     log_e("Bad dimensions given");
@@ -423,7 +423,7 @@ void M5Display::drawJpg(const uint8_t *jpg_data, size_t jpg_len, uint16_t x,
 void M5Display::drawJpgFile(fs::FS &fs, const char *path, uint16_t x, uint16_t y,
                             uint16_t maxWidth, uint16_t maxHeight, uint16_t offX,
                             uint16_t offY, jpeg_div_t scale,
-                            POSITION_CALLBACK pos_fn)
+                            POSITION_CALLBACK pos_fn /* = nullptr */)
 {
   if ((x + maxWidth) > width() || (y + maxHeight) > height()) {
     log_e("Bad dimensions given");
