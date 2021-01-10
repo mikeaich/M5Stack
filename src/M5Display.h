@@ -67,20 +67,42 @@
       void drawBitmap(int16_t x0, int16_t y0, int16_t w, int16_t h, uint8_t *data);
       void drawBitmap(int16_t x0, int16_t y0, int16_t w, int16_t h, const uint16_t *data, uint16_t transparent);
 
+      struct POINT
+      {
+        uint16_t x;
+        uint16_t y;
+      };
+      struct SIZE
+      {
+        uint16_t w;
+        uint16_t h;
+      };
+      struct IMAGE_POSITION
+      {
+        POINT pos;      // position of image origin on the screen
+        POINT ofs;      // offset into the image to place at `pos`
+        SIZE img;       // actual portion of the image to render
+        uint8_t scale;  // scale factor: 1, 2, 4, or 8.
+      };
+      using POSITION_CALLBACK = bool (*)(IMAGE_POSITION& img_pos);
+
       void drawJpg(const uint8_t *jpg_data, size_t jpg_len, uint16_t x = 0,
                   uint16_t y = 0, uint16_t maxWidth = 0, uint16_t maxHeight = 0,
                   uint16_t offX = 0, uint16_t offY = 0,
-                  jpeg_div_t scale = JPEG_DIV_NONE);
+                  jpeg_div_t scale = JPEG_DIV_NONE,
+                  POSITION_CALLBACK pos_fn = nullptr);
 
       void drawJpg(fs::FS &fs, const char *path, uint16_t x = 0, uint16_t y = 0,
                     uint16_t maxWidth = 0, uint16_t maxHeight = 0,
                     uint16_t offX = 0, uint16_t offY = 0,
-                    jpeg_div_t scale = JPEG_DIV_NONE);
+                    jpeg_div_t scale = JPEG_DIV_NONE,
+                    POSITION_CALLBACK pos_fn = nullptr);
 
       void drawJpgFile(fs::FS &fs, const char *path, uint16_t x = 0, uint16_t y = 0,
                     uint16_t maxWidth = 0, uint16_t maxHeight = 0,
                     uint16_t offX = 0, uint16_t offY = 0,
-                    jpeg_div_t scale = JPEG_DIV_NONE);
+                    jpeg_div_t scale = JPEG_DIV_NONE,
+                    POSITION_CALLBACK pos_fn = nullptr);
 
       void drawPngFile(fs::FS &fs, const char *path, uint16_t x = 0, uint16_t y = 0,
                     uint16_t maxWidth = 0, uint16_t maxHeight = 0,

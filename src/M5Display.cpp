@@ -214,7 +214,7 @@ const char *jd_errors[] = {"Succeeded",
                            "Not supported JPEG standard"};
 #endif
 
-typedef struct {
+typedef struct jpeg_file_decoder {
   uint16_t x;
   uint16_t y;
   uint16_t maxWidth;
@@ -228,6 +228,7 @@ typedef struct {
   M5Display *tft;
   uint16_t outWidth;
   uint16_t outHeight;
+  M5Display::POSITION_CALLBACK position_callback;
 } jpg_file_decoder_t;
 
 static uint32_t jpgReadFile(JDEC *decoder, uint8_t *buf, uint32_t len) {
@@ -333,16 +334,42 @@ static bool jpgDecode(jpg_file_decoder_t *jpeg,
     return false;
   }
 
-  uint16_t jpgWidth = decoder.width / (1 << (uint8_t)(jpeg->scale));
-  uint16_t jpgHeight = decoder.height / (1 << (uint8_t)(jpeg->scale));
+  // If no positioning callback was specified, use the default algorithm.
+  M5Display::IMAGE_POSITION imgPos;
 
-  if (jpeg->offX >= jpgWidth || jpeg->offY >= jpgHeight) {
+  imgPos.ofs.x = jpeg->offX;
+  imgPos.ofs.y = jpeg->offY;
+  imgPos.img.h = decoder.height;
+  imgPos.img.w = decoder.width;
+  imgPos.pos.x = jpeg->x;
+  imgPos.pos.y = jpeg->y;
+  imgPos.scale = jpeg->scale;
+
+  if (jpeg->position_callback) {
+    const bool go_ahead = jpeg->position_callback(imgPos);
+    if (!go_ahead) {
+      return false;
+    }
+
+    jpeg->offX = imgPos.ofs.x;
+    jpeg->offY = imgPos.ofs.y;
+    jpeg->x = imgPos.pos.x;
+    jpeg->y = imgPos.pos.y;
+    jpeg->outHeight = imgPos.img.h;
+    jpeg->outWidth = imgPos.img.w;
+    jpeg->scale = static_cast<jpeg_div_t>(imgPos.scale);
+  }
+
+  const uint16_t jpgWidth = imgPos.img.w >> imgPos.scale;
+  const uint16_t jpgHeight = imgPos.img.h >> imgPos.scale;
+
+  if (imgPos.ofs.x >= jpgWidth || imgPos.ofs.y >= jpgHeight) {
     log_e("Offset Outside of JPEG size");
     return false;
   }
 
-  size_t jpgMaxWidth = jpgWidth - jpeg->offX;
-  size_t jpgMaxHeight = jpgHeight - jpeg->offY;
+  const size_t jpgMaxWidth = jpgWidth - imgPos.ofs.x;
+  const size_t jpgMaxHeight = jpgHeight - imgPos.ofs.y;
 
   jpeg->outWidth =
       (jpgMaxWidth > jpeg->maxWidth) ? jpeg->maxWidth : jpgMaxWidth;
@@ -360,7 +387,9 @@ static bool jpgDecode(jpg_file_decoder_t *jpeg,
 
 void M5Display::drawJpg(const uint8_t *jpg_data, size_t jpg_len, uint16_t x,
                         uint16_t y, uint16_t maxWidth, uint16_t maxHeight,
-                        uint16_t offX, uint16_t offY, jpeg_div_t scale) {
+                        uint16_t offX, uint16_t offY, jpeg_div_t scale,
+                        POSITION_CALLBACK pos_fn)
+{
   if ((x + maxWidth) > width() || (y + maxHeight) > height()) {
     log_e("Bad dimensions given");
     return;
@@ -386,13 +415,16 @@ void M5Display::drawJpg(const uint8_t *jpg_data, size_t jpg_len, uint16_t x,
   jpeg.offY = offY;
   jpeg.scale = scale;
   jpeg.tft = this;
+  jpeg.position_callback = pos_fn;
 
   jpgDecode(&jpeg, jpgRead);
 }
 
 void M5Display::drawJpgFile(fs::FS &fs, const char *path, uint16_t x, uint16_t y,
                             uint16_t maxWidth, uint16_t maxHeight, uint16_t offX,
-                            uint16_t offY, jpeg_div_t scale) {
+                            uint16_t offY, jpeg_div_t scale,
+                            POSITION_CALLBACK pos_fn)
+{
   if ((x + maxWidth) > width() || (y + maxHeight) > height()) {
     log_e("Bad dimensions given");
     return;
@@ -424,6 +456,7 @@ void M5Display::drawJpgFile(fs::FS &fs, const char *path, uint16_t x, uint16_t y
   jpeg.offY = offY;
   jpeg.scale = scale;
   jpeg.tft = this;
+  jpeg.position_callback = pos_fn;
 
   jpgDecode(&jpeg, jpgReadFile);
 
